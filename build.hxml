@@ -1,0 +1,6 @@
+ethreader.EtherscanReader
+-js ethreader.js
+-cp src
+-cp lib/parity/src
+-lib hxnodejs
+

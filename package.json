@@ -1,0 +1,12 @@
+{
+  "name": "ethreader",
+  "description": "a programmatic reader that decode ethereum contract call via provided ABI",
+  "author": "etherplay",
+  "engine": "node >= 5.0.0",
+  "dependencies": {
+    "@parity/parity.js": "0.2.93"
+  },
+  "devDependencies": {
+    "dotenv": "^4.0.0"
+  }
+}

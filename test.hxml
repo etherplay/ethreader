@@ -1,0 +1,7 @@
+-js haxe_test.js
+-main TestAll
+-cp src
+-cp test/src
+-cp lib/parity/src
+-lib hxnodejs
+-dce full
