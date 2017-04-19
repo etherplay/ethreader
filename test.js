@@ -27,6 +27,4 @@ reader.collect(function(err, transactions){
 	}
 	
 	console.log(numPlayers);
-	process.exit(0); //TODO fix our use of parity.js
-
 });	

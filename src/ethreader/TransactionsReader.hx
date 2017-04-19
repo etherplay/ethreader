@@ -11,6 +11,22 @@ using Lambda;
 //caching
 import js.node.Fs;
 
+
+//TODO get rid of that by being able to acces parity.js util directly
+class FakeTransport extends parity.api.Transport{
+	public function new(){}
+
+	@:keep
+	public function execute(){
+
+	}
+
+	@:keep
+	public function addMiddleware(d : Dynamic){
+		
+	}
+}
+
 class TransactionsReader{
 	
 	var _abiMap : AbiMap;
@@ -20,7 +36,7 @@ class TransactionsReader{
 	//TODO get rid of that by being able to acces parity.js util directly
 	static var _api : Api;
 	static public function __init__(){
-		var transport = new Http('localhost:8545');
+		var transport = new FakeTransport();
 		_api = new Api(transport);
 	}
 

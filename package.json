@@ -4,9 +4,9 @@
   "author": "etherplay",
   "engine": "node >= 5.0.0",
   "dependencies": {
-    "@parity/parity.js": "0.2.93"
+    "@parity/parity.js": "0.2.204"
   },
   "devDependencies": {
-    "dotenv": "^4.0.0"
+    "dotenv": "4.0.0"
   }
 }
