@@ -12,6 +12,13 @@ class EtherscanReader implements EthReader{
 		return new TransactionsReader(address, this);
 	}
 
+	
+	public var type : String = "EtherscanReader";
+
+	public function getNetworkId(callback : Error -> String -> Void):Void{
+		callback(null,"1"); //TODO support testnets
+	}
+
 
 	public function getAbi(address : String, onData : Error -> Abi -> Void):Void{
 		var options = {

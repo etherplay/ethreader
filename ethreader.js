@@ -29,12 +29,16 @@ Lambda.foreach = function(it,f) {
 };
 var ethreader_EthReader = function() { };
 var ethreader_EtherscanReader = $hx_exports["ethreader"]["EtherscanReader"] = function(apiKey) {
+	this.type = "EtherscanReader";
 	this._apiKey = apiKey;
 };
 ethreader_EtherscanReader.__interfaces__ = [ethreader_EthReader];
 ethreader_EtherscanReader.prototype = {
 	newTransactionReader: function(address) {
 		return new ethreader_TransactionsReader(address,this);
+	}
+	,getNetworkId: function(callback) {
+		callback(null,"1");
 	}
 	,getAbi: function(address,onData) {
 		var options = { host : "api.etherscan.io", path : "/api?module=contract&action=getabi&address=" + address + "&apikey=" + this._apiKey};
@@ -115,6 +119,7 @@ var ethreader_TransactionsReader = function(address,ethReader) {
 	this._abiMap = null;
 	this._address = address;
 	this._ethReader = ethReader;
+	this._networkId = null;
 };
 ethreader_TransactionsReader.prototype = {
 	collect: function(callback,startBlock,endBlock) {
@@ -125,42 +130,40 @@ ethreader_TransactionsReader.prototype = {
 			startBlock = 0;
 		}
 		var _gthis = this;
-		if(this._abiMap == null) {
-			console.log("getting abi from ethreader...");
-			this._ethReader.getAbi(this._address,function(error,abi) {
+		if(this._networkId == null) {
+			this._ethReader.getNetworkId(function(error,networkId) {
 				if(error != null) {
 					callback(error,null);
 				} else {
-					console.log("converting abi to abimap");
-					var methodAbiMap = new haxe_ds_StringMap();
-					var _g = 0;
-					while(_g < abi.length) {
-						var methodAbi = abi[_g];
-						++_g;
-						var k = methodAbi.name;
-						if(__map_reserved[k] != null) {
-							methodAbiMap.setReserved(k,methodAbi);
+					_gthis._networkId = networkId;
+					_gthis._collect_abi(startBlock,endBlock,callback);
+				}
+			});
+		} else {
+			this._collect_abi(startBlock,endBlock,callback);
+		}
+	}
+	,_get_abi_from_cache: function(callback) {
+		callback("no cache yet");
+	}
+	,_save_abi_to_cache: function(callback) {
+		callback(null);
+	}
+	,_collect_abi: function(startBlock,endBlock,callback) {
+		var _gthis = this;
+		if(this._abiMap == null) {
+			console.log("getting abi from cache...");
+			this._get_abi_from_cache(function(error) {
+				if(error != null) {
+					console.log("getting abi from ethreader...");
+					_gthis._fetch_abi(function(error1) {
+						if(error1 != null) {
+							callback(error1,null);
 						} else {
-							methodAbiMap.h[k] = methodAbi;
+							_gthis._collect(startBlock,endBlock,callback);
 						}
-					}
-					var contract = ethreader_TransactionsReader._api.newContract(abi);
-					_gthis._abiMap = new haxe_ds_StringMap();
-					Lambda.foreach(contract.functions,function(fn) {
-						if(fn != null && fn.signature != null) {
-							var this1 = _gthis._abiMap;
-							var k1 = "0x" + fn.signature;
-							var key = fn.name;
-							var v = __map_reserved[key] != null ? methodAbiMap.getReserved(key) : methodAbiMap.h[key];
-							var _this = this1;
-							if(__map_reserved[k1] != null) {
-								_this.setReserved(k1,v);
-							} else {
-								_this.h[k1] = v;
-							}
-						}
-						return true;
 					});
+				} else {
 					_gthis._collect(startBlock,endBlock,callback);
 				}
 			});
@@ -168,40 +171,102 @@ ethreader_TransactionsReader.prototype = {
 			this._collect(startBlock,endBlock,callback);
 		}
 	}
-	,_collect: function(startBlock,endBlock,callback) {
+	,_fetch_abi: function(callback) {
 		var _gthis = this;
-		console.log("getting transactions from ethreader...");
-		this._ethReader.getTransactions(this._address,startBlock,endBlock,function(error,transactions) {
+		this._ethReader.getAbi(this._address,function(error,abi) {
 			if(error != null) {
-				callback(error,null);
+				callback(error);
 			} else {
-				console.log("decoding...");
+				console.log("converting abi to abimap");
+				var methodAbiMap = new haxe_ds_StringMap();
 				var _g = 0;
-				while(_g < transactions.length) {
-					var transaction = transactions[_g];
+				while(_g < abi.length) {
+					var methodAbi = abi[_g];
 					++_g;
-					if(transaction.input == "0x") {
-						continue;
-					}
-					var callData = ethreader_TransactionsReader._api.util.decodeCallData(transaction.input);
-					var key = callData.signature;
-					var _this = _gthis._abiMap;
-					var methodAbi = __map_reserved[key] != null ? _this.getReserved(key) : _this.h[key];
-					if(methodAbi != null) {
-						var inputArray = ethreader_TransactionsReader._api.util.decodeMethodInput(methodAbi,callData.paramdata);
-						var decoded_input = { };
-						var _g2 = 0;
-						var _g1 = inputArray.length;
-						while(_g2 < _g1) {
-							var j = _g2++;
-							decoded_input[methodAbi.inputs[j].name] = inputArray[j];
-						}
-						transaction.decoded_call = { "name" : methodAbi.name, "input" : decoded_input};
+					var k = methodAbi.name;
+					if(__map_reserved[k] != null) {
+						methodAbiMap.setReserved(k,methodAbi);
 					} else {
-						console.log("no method with signature " + callData.signature);
+						methodAbiMap.h[k] = methodAbi;
 					}
 				}
-				callback(null,transactions);
+				var contract = ethreader_TransactionsReader._api.newContract(abi);
+				_gthis._abiMap = new haxe_ds_StringMap();
+				Lambda.foreach(contract.functions,function(fn) {
+					if(fn != null && fn.signature != null) {
+						var this1 = _gthis._abiMap;
+						var k1 = "0x" + fn.signature;
+						var key = fn.name;
+						var v = __map_reserved[key] != null ? methodAbiMap.getReserved(key) : methodAbiMap.h[key];
+						var _this = this1;
+						if(__map_reserved[k1] != null) {
+							_this.setReserved(k1,v);
+						} else {
+							_this.h[k1] = v;
+						}
+					}
+					return true;
+				});
+				_gthis._save_abi_to_cache(function(error1) {
+					callback(error1);
+				});
+			}
+		});
+	}
+	,_get_transactions_from_cache: function(callback) {
+		callback("no cache yet",null);
+	}
+	,_save_transactions_to_cache: function(transactions,callback) {
+		callback(null);
+	}
+	,_collect: function(startBlock,endBlock,callback) {
+		var _gthis = this;
+		console.log("getting transactions from cache...");
+		this._get_transactions_from_cache(function(error,transactionsCache) {
+			var cacheDuration = 300;
+			if(error != null || new Date().getTime() / 1000 - transactionsCache.timestamp > cacheDuration && transactionsCache.lastBlock < endBlock) {
+				var prevTransactions = [];
+				if(transactionsCache != null) {
+					prevTransactions = transactionsCache.transactions;
+				}
+				console.log("getting transactions from ethreader...");
+				_gthis._ethReader.getTransactions(_gthis._address,startBlock,endBlock,function(error1,transactions) {
+					if(error1 != null) {
+						callback(error1,null);
+					} else {
+						console.log("decoding...");
+						var _g = 0;
+						while(_g < transactions.length) {
+							var transaction = transactions[_g];
+							++_g;
+							if(transaction.input == "0x") {
+								continue;
+							}
+							var callData = ethreader_TransactionsReader._api.util.decodeCallData(transaction.input);
+							var key = callData.signature;
+							var _this = _gthis._abiMap;
+							var methodAbi = __map_reserved[key] != null ? _this.getReserved(key) : _this.h[key];
+							if(methodAbi != null) {
+								var inputArray = ethreader_TransactionsReader._api.util.decodeMethodInput(methodAbi,callData.paramdata);
+								var decoded_input = { };
+								var _g2 = 0;
+								var _g1 = inputArray.length;
+								while(_g2 < _g1) {
+									var j = _g2++;
+									decoded_input[methodAbi.inputs[j].name] = inputArray[j];
+								}
+								transaction.decoded_call = { "name" : methodAbi.name, "input" : decoded_input};
+							} else {
+								console.log("no method with signature " + callData.signature);
+							}
+						}
+						_gthis._save_transactions_to_cache(transactions,function(error2) {
+							callback(null,transactions);
+						});
+					}
+				});
+			} else {
+				callback(null,transactionsCache.transactions);
 			}
 		});
 	}

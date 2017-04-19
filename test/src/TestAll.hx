@@ -9,6 +9,7 @@ class TestAll{
 		
 		var ethReader = new EtherscanReader(apiKey);
 		var txReader = ethReader.newTransactionReader("0x5f742383b6d1298980030d6af943b76cdd902143");
+		// var txReader = ethReader.newTransactionReader("0x3d42F7eb6B97Ab66d8d44C725651BEfE02a70e5E");
 
 		txReader.collect(function(error, transactions){
 			if(error != null){
@@ -17,6 +18,6 @@ class TestAll{
 				trace(transactions);
 			}
 			
-		},3552258);
+		},3552235);
 	}
 }
