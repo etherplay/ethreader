@@ -2,6 +2,6 @@
 -main TestAll
 -cp src
 -cp test/src
--cp lib/parity/src
+-cp externs/parity/src
 -lib hxnodejs
 -dce full

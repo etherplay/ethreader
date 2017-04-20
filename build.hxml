@@ -1,7 +1,7 @@
 ethreader.EtherscanReader
 -js ethreader.js
 -cp src
--cp lib/parity/src
+-cp externs/parity/src
 -lib hxnodejs
 --no-traces
 
