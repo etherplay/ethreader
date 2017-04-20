@@ -15,9 +15,9 @@ class TestAll{
 			if(error != null){
 				trace("error", error);
 			}else{
-				trace(transactions);
+				trace(haxe.Json.stringify(transactions, null, "  "));
 			}
-			
-		},3552235);
+			trace(transactions.length);
+		},2966683,2966683);
 	}
 }

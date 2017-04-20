@@ -63,6 +63,55 @@ class TransactionsReader{
 		_networkId = null;
 	}
 
+	function decodeTransaction(transaction : DecodedTransaction){
+
+		//Does not make sense with caching
+		Reflect.deleteField(transaction,"confirmations");
+
+		if(transaction.input == "0x" || transaction.input == "" || transaction.input == null){
+			return;
+		}
+
+		var callData = _api.util.decodeCallData(transaction.input);
+		var methodAbi = _abiMap[callData.signature];
+		if(methodAbi != null){
+			var inputArray = _api.util.decodeMethodInput(methodAbi,callData.paramdata);
+			var decoded_input : Dynamic = {};
+			for(j in 0...inputArray.length){
+				
+				
+				#if debug
+				//trace(methodAbi.inputs[j].type + " : " + haxe.Json.stringify(inputArray[j]));
+				#end
+				
+				var type = methodAbi.inputs[j].type;
+				var value : Dynamic = if(type == "bytes32"){
+					var s = "0x";
+					for(v in cast(inputArray[j],Array<Dynamic>)){
+						s += StringTools.hex(v,2);
+					}					
+					s;
+				}else if(type.indexOf("[]") >= 0){
+					var array = new Array<Dynamic>();
+					for(v in cast(inputArray[j],Array<Dynamic>)){
+						array.push(v._value);
+					}
+					array;
+				}else{
+					haxe.Json.parse(haxe.Json.stringify(inputArray[j]));
+				}
+
+				decoded_input[methodAbi.inputs[j].name] = value;
+			}
+			
+			transaction.decoded_call = {"name":methodAbi.name, "input" : decoded_input};
+			Reflect.deleteField(transaction,"input");
+			
+		}else{
+			trace("no method with signature " + callData.signature);
+		}
+	}
+
 	public function collect(callback : Error -> Array<DecodedTransaction> -> Void, startBlock : Int = 0, endBlock : Int = 2147483647){ //TODO 64bit or string ?
 		if(_networkId == null){
 			_ethReader.getNetworkId(function(error,networkId){
@@ -182,7 +231,7 @@ class TransactionsReader{
 	function _collect(startBlock : Int, endBlock : Int, callback : Error -> Array<DecodedTransaction> -> Void){
 		trace("getting transactions from cache...");
 		_get_transactions_from_cache(function(error, transactionsCache){
-			var cacheDuration = 60 * 5; //TODO
+			var cacheDuration = 5 * 60;
 			if(error !=null || (haxe.Timer.stamp() - transactionsCache.timestamp > cacheDuration  && transactionsCache.lastBlock < endBlock)){
 				var prevTransactions = [];
 				var fetchStartBlock = 0;
@@ -196,53 +245,59 @@ class TransactionsReader{
 					if(error != null){
 						callback(error,null);
 					}else{
-						trace("decoding " +  transactions.length + " transactions ...");
-						for(transaction in transactions){
-							if(transaction.input == "0x"){
-								continue;
-							}
-							var callData = _api.util.decodeCallData(transaction.input);
-							var methodAbi = _abiMap[callData.signature];
-							if(methodAbi != null){
-								var inputArray = _api.util.decodeMethodInput(methodAbi,callData.paramdata);
-								var decoded_input : Dynamic = {};
-								for(j in 0...inputArray.length){
-									decoded_input[methodAbi.inputs[j].name] = inputArray[j]; //TODO check array of uint32 and bytes32
-								}
-								// transaction.input_array = inputArray;
-								transaction.decoded_call = {"name":methodAbi.name, "input" : decoded_input};
-							}else{
-								trace("no method with signature " + callData.signature);
-							}
-						}
 
-						var extraTransactions = false;
-						for(transaction in transactions){
+						var extraTransactions = transactions.length > 0;
+
+						#if debug
+							for(transaction in prevTransactions){
+								decodeTransaction(transaction);
+							}
 							extraTransactions = true;
-							prevTransactions.push(transaction);
-						}
+						#end
 
-						transactions = prevTransactions.filter(function(tx){
-							return tx.blockNumber >= startBlock;
+						if(extraTransactions){
+							trace("decoding " +  transactions.length + " transactions ...");
+							for(transaction in transactions){
+								
+								var decodedTransaction : DecodedTransaction = cast transaction; //TODO copy ?
+								prevTransactions.push(decodedTransaction);
+
+								decodeTransaction(decodedTransaction);
+							}
+						}
+						
+						var transactionsToOutput = prevTransactions.filter(function(tx){
+							return Std.parseInt(tx.blockNumber) >= startBlock && Std.parseInt(tx.blockNumber) <= endBlock;
 						});
 						
 
 						if(extraTransactions){
 							_save_transactions_to_cache(prevTransactions,function(error){
-								callback(null,transactions);
+								callback(null,transactionsToOutput);
 							});
 						}else{
-							callback(null,transactions);
+							callback(null,transactionsToOutput);
 						}
 						
 						
 					}
 				});
 			}else{
-				var transactions = transactionsCache.transactions.filter(function(tx){
-						return tx.blockNumber >= startBlock;
+				trace("skip fetch..."); 
+				var transactionsToOutput = transactionsCache.transactions.filter(function(tx){
+						return Std.parseInt(tx.blockNumber) >= startBlock  && Std.parseInt(tx.blockNumber) <= endBlock;
 					});
-				callback(null,transactions);
+
+				#if debug
+				for(transaction in transactionsCache.transactions){
+					decodeTransaction(transaction);
+				}
+				_save_transactions_to_cache(transactionsCache.transactions,function(error){
+					callback(null,transactionsToOutput);
+				});
+				#else
+				callback(null,transactionsToOutput);
+				#end
 			}
 		});
 		

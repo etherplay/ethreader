@@ -3,4 +3,5 @@ ethreader.EtherscanReader
 -cp src
 -cp lib/parity/src
 -lib hxnodejs
+--no-traces
 
