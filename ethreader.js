@@ -10,6 +10,13 @@ function $extend(from, fields) {
 }
 var HxOverrides = function() { };
 HxOverrides.__name__ = true;
+HxOverrides.cca = function(s,index) {
+	var x = s.charCodeAt(index);
+	if(x != x) {
+		return undefined;
+	}
+	return x;
+};
 HxOverrides.iter = function(a) {
 	return { cur : 0, arr : a, hasNext : function() {
 		return this.cur < this.arr.length;
@@ -44,10 +51,27 @@ Reflect.fields = function(o) {
 	}
 	return a;
 };
+Reflect.deleteField = function(o,field) {
+	if(!Object.prototype.hasOwnProperty.call(o,field)) {
+		return false;
+	}
+	delete(o[field]);
+	return true;
+};
 var Std = function() { };
 Std.__name__ = true;
 Std.string = function(s) {
 	return js_Boot.__string_rec(s,"");
+};
+Std.parseInt = function(x) {
+	var v = parseInt(x,10);
+	if(v == 0 && (HxOverrides.cca(x,1) == 120 || HxOverrides.cca(x,1) == 88)) {
+		v = parseInt(x);
+	}
+	if(isNaN(v)) {
+		return null;
+	}
+	return v;
 };
 var StringTools = function() { };
 StringTools.__name__ = true;
@@ -172,7 +196,8 @@ var ethreader_TransactionsReader = function(address,ethReader) {
 ethreader_TransactionsReader.__name__ = true;
 ethreader_TransactionsReader.prototype = {
 	decodeTransaction: function(transaction) {
-		if(transaction.input == "0x") {
+		Reflect.deleteField(transaction,"confirmations");
+		if(transaction.input == "0x" || transaction.input == "" || transaction.input == null) {
 			return;
 		}
 		var callData = ethreader_TransactionsReader._api.util.decodeCallData(transaction.input);
@@ -214,6 +239,7 @@ ethreader_TransactionsReader.prototype = {
 				decoded_input[methodAbi.inputs[j].name] = value;
 			}
 			transaction.decoded_call = { "name" : methodAbi.name, "input" : decoded_input};
+			Reflect.deleteField(transaction,"input");
 		}
 	}
 	,collect: function(callback,startBlock,endBlock) {
@@ -381,8 +407,8 @@ ethreader_TransactionsReader.prototype = {
 							}
 						}
 						var transactionsToOutput = prevTransactions.filter(function(tx) {
-							if(tx.blockNumber >= startBlock) {
-								return tx.blockNumber <= endBlock;
+							if(Std.parseInt(tx.blockNumber) >= startBlock) {
+								return Std.parseInt(tx.blockNumber) <= endBlock;
 							} else {
 								return false;
 							}
@@ -398,8 +424,8 @@ ethreader_TransactionsReader.prototype = {
 				});
 			} else {
 				var transactionsToOutput1 = transactionsCache.transactions.filter(function(tx1) {
-					if(tx1.blockNumber >= startBlock) {
-						return tx1.blockNumber <= endBlock;
+					if(Std.parseInt(tx1.blockNumber) >= startBlock) {
+						return Std.parseInt(tx1.blockNumber) <= endBlock;
 					} else {
 						return false;
 					}
