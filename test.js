@@ -1,30 +1,28 @@
 require('dotenv').config();
 
+if(process.argv.length < 3){
+	console.log("give a name to lookup your identity in the original devcon2 token contract");
+	process.exit(1);
+}
+var name = process.argv[2];
+
 var ethreader = require('./ethreader').ethreader;
 
 var etherscan = new ethreader.EtherscanReader(process.env["ETHERSCAN_API_KEY"]);
 
-var reader = etherscan.newTransactionReader("0x3d42F7eb6B97Ab66d8d44C725651BEfE02a70e5E");
+var reader = etherscan.newTransactionReader("0x0a43edfe106d295e7c1e591a4b04b5598af9474c");
 
 reader.collect(function(err, transactions){
 
-
-	var players = {}
 	transactions.forEach((tx) => {
-	  if(tx.decoded_call && ( tx.decoded_call.name == "setName")){
-	  	if(!players[tx.from]){
-	  		players[tx.from] = [];
+	  if(tx.decoded_call && ( tx.decoded_call.name == "mint")){
+	  	var identity = tx.decoded_call.input._identity
+	  	if(identity && identity.indexOf(name) >= 0){
+	  		console.log(tx);
 	  	}
-	  	players[tx.from].push(tx);
 	  }
 	});
 
-	var numPlayers = 0;
-	for (var player in players) {
-	    if (players.hasOwnProperty(player)) {
-	    	numPlayers ++;
-	    }
-	}
 	
-	console.log(numPlayers);
+	
 });	

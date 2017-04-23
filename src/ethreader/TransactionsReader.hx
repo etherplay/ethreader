@@ -75,7 +75,13 @@ class TransactionsReader{
 		var callData = _api.util.decodeCallData(transaction.input);
 		var methodAbi = _abiMap[callData.signature];
 		if(methodAbi != null){
-			var inputArray = _api.util.decodeMethodInput(methodAbi,callData.paramdata);
+			var inputArray = [];
+			try{
+				inputArray = _api.util.decodeMethodInput(methodAbi,callData.paramdata);
+			}catch(e : Dynamic){
+				trace(e,methodAbi,callData.paramdata);
+			}
+			 
 			var decoded_input : Dynamic = {};
 			for(j in 0...inputArray.length){
 				

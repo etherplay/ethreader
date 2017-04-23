@@ -205,7 +205,11 @@ ethreader_TransactionsReader.prototype = {
 		var _this = this._abiMap;
 		var methodAbi = __map_reserved[key] != null ? _this.getReserved(key) : _this.h[key];
 		if(methodAbi != null) {
-			var inputArray = ethreader_TransactionsReader._api.util.decodeMethodInput(methodAbi,callData.paramdata);
+			var inputArray = [];
+			try {
+				inputArray = ethreader_TransactionsReader._api.util.decodeMethodInput(methodAbi,callData.paramdata);
+			} catch( e ) {
+			}
 			var decoded_input = { };
 			var _g1 = 0;
 			var _g = inputArray.length;

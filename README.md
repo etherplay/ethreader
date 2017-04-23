@@ -9,6 +9,15 @@ ethreader has been built using [Haxe](https://haxe.org/) but can be used in both
 
 You can find an example for javascript in "test.js" and for Haxe in test/src/TestAll.hx
 
+The example lookup the identity name used in the original devcon2 token contract
+
+try it with 
+
+```
+node test.js <substring>
+```
+
 The tool is functional but it is still a work in progress.
+
 
 
