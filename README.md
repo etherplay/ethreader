@@ -17,6 +17,17 @@ try it with
 node test.js <substring>
 ```
 
+but make sure you did this before in the ethreader folder to fetch the dependencies:
+```
+npm install
+```
+
+you will also need a ```.env``` file to store your etherscan api key like
+
+```
+ETHERSCAN_API_KEY=<API KEY>
+```
+
 The tool is functional but it is still a work in progress.
 
 
