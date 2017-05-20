@@ -10,13 +10,6 @@ function $extend(from, fields) {
 }
 var HxOverrides = function() { };
 HxOverrides.__name__ = true;
-HxOverrides.cca = function(s,index) {
-	var x = s.charCodeAt(index);
-	if(x != x) {
-		return undefined;
-	}
-	return x;
-};
 HxOverrides.iter = function(a) {
 	return { cur : 0, arr : a, hasNext : function() {
 		return this.cur < this.arr.length;
@@ -63,16 +56,6 @@ Std.__name__ = true;
 Std.string = function(s) {
 	return js_Boot.__string_rec(s,"");
 };
-Std.parseInt = function(x) {
-	var v = parseInt(x,10);
-	if(v == 0 && (HxOverrides.cca(x,1) == 120 || HxOverrides.cca(x,1) == 88)) {
-		v = parseInt(x);
-	}
-	if(isNaN(v)) {
-		return null;
-	}
-	return v;
-};
 var StringTools = function() { };
 StringTools.__name__ = true;
 StringTools.hex = function(n,digits) {
@@ -89,6 +72,28 @@ StringTools.hex = function(n,digits) {
 		while(s.length < digits) s = "0" + s;
 	}
 	return s;
+};
+var BigNumber = require("bignumber.js");
+var bignumberjs__$BigNumber_BigNumber_$Impl_$ = {};
+bignumberjs__$BigNumber_BigNumber_$Impl_$.__name__ = true;
+bignumberjs__$BigNumber_BigNumber_$Impl_$._new = function(value) {
+	var this1 = new BigNumber(value);
+	return this1;
+};
+bignumberjs__$BigNumber_BigNumber_$Impl_$.fromInt = function(value) {
+	var this1 = new BigNumber(new BigNumber(value));
+	return this1;
+};
+bignumberjs__$BigNumber_BigNumber_$Impl_$.fromFloat = function(value) {
+	var this1 = new BigNumber(new BigNumber(value));
+	return this1;
+};
+bignumberjs__$BigNumber_BigNumber_$Impl_$.fromString = function(value) {
+	var this1 = new BigNumber(new BigNumber(value));
+	return this1;
+};
+bignumberjs__$BigNumber_BigNumber_$Impl_$.random = function() {
+	return BigNumber.random();
 };
 var ethreader_EthReader = function() { };
 ethreader_EthReader.__name__ = true;
@@ -411,8 +416,8 @@ ethreader_TransactionsReader.prototype = {
 							}
 						}
 						var transactionsToOutput = prevTransactions.filter(function(tx) {
-							if(Std.parseInt(tx.blockNumber) >= startBlock) {
-								return Std.parseInt(tx.blockNumber) <= endBlock;
+							if(tx.blockNumber >= startBlock) {
+								return tx.blockNumber <= endBlock;
 							} else {
 								return false;
 							}
@@ -428,8 +433,8 @@ ethreader_TransactionsReader.prototype = {
 				});
 			} else {
 				var transactionsToOutput1 = transactionsCache.transactions.filter(function(tx1) {
-					if(Std.parseInt(tx1.blockNumber) >= startBlock) {
-						return Std.parseInt(tx1.blockNumber) <= endBlock;
+					if(tx1.blockNumber >= startBlock) {
+						return tx1.blockNumber <= endBlock;
 					} else {
 						return false;
 					}
@@ -721,6 +726,86 @@ js_Boot.__resolveNativeClass = function(name) {
 };
 var js_node_Http = require("http");
 var js_node_buffer_Buffer = require("buffer").Buffer;
+var js_node_net_Socket = require("net").Socket;
+var web3_Provider = function() { };
+web3_Provider.__name__ = true;
+web3_Provider.prototype = {
+	__class__: web3_Provider
+};
+var web3__$Web3_TransactionHash_$Impl_$ = {};
+web3__$Web3_TransactionHash_$Impl_$.__name__ = true;
+web3__$Web3_TransactionHash_$Impl_$._new = function(value) {
+	var this1 = value;
+	return this1;
+};
+var web3__$Web3_Address_$Impl_$ = {};
+web3__$Web3_Address_$Impl_$.__name__ = true;
+web3__$Web3_Address_$Impl_$._new = function(value) {
+	var this1 = value;
+	return this1;
+};
+var web3__$Web3_Ether_$Impl_$ = {};
+web3__$Web3_Ether_$Impl_$.__name__ = true;
+web3__$Web3_Ether_$Impl_$._new = function(value) {
+	var this1 = value;
+	return this1;
+};
+web3__$Web3_Ether_$Impl_$.fromInt = function(value) {
+	var this1 = new BigNumber(new BigNumber(value));
+	var this2 = this1;
+	return this2;
+};
+web3__$Web3_Ether_$Impl_$.toWei = function(this1) {
+	web3_Web3Lib.setup();
+	var this2 = new BigNumber(new BigNumber(web3_Web3Lib._web3["toWei"](this1,"ether")));
+	return this2;
+};
+var web3__$Web3_Wei_$Impl_$ = {};
+web3__$Web3_Wei_$Impl_$.__name__ = true;
+web3__$Web3_Wei_$Impl_$._new = function(value) {
+	var this1 = value;
+	return this1;
+};
+web3__$Web3_Wei_$Impl_$.fromEther = function(ether) {
+	web3_Web3Lib.setup();
+	var this1 = new BigNumber(new BigNumber(web3_Web3Lib._web3["toWei"](ether,"ether")));
+	var this2 = this1;
+	return this2;
+};
+web3__$Web3_Wei_$Impl_$.fromInt = function(value) {
+	var this1 = new BigNumber(new BigNumber(value));
+	var this2 = this1;
+	return this2;
+};
+var web3_Web3Lib = function() { };
+web3_Web3Lib.__name__ = true;
+web3_Web3Lib.createHttpProvider = function(url) {
+	return new Web3.providers.HttpProvider(url);
+};
+web3_Web3Lib.createIpcProvider = function(url) {
+	var client = new js_node_net_Socket();
+	return new Web3.providers.IpcProvider(url,client);
+};
+web3_Web3Lib.setup = function() {
+	if(typeof Web3 == 'undefined'){
+				if(typeof global != 'undefined'){
+					global.Web3 = require('web3');
+				}else if(typeof window != 'undefined'){
+					window.Web3 = require('web3');
+				}
+			}
+	if(web3_Web3Lib._web3 == null) {
+		web3_Web3Lib._web3 = new Web3();
+		web3_Web3Lib._web3.reset();
+	}
+};
+web3_Web3Lib.createInstance = function() {
+	return new Web3();
+};
+web3_Web3Lib.toWei = function(value,base) {
+	web3_Web3Lib.setup();
+	return web3_Web3Lib._web3["toWei"](value,base);
+};
 function $iterator(o) { if( o instanceof Array ) return function() { return HxOverrides.iter(o); }; return typeof(o.iterator) == 'function' ? $bind(o,o.iterator) : o.iterator; }
 var $_, $fid = 0;
 function $bind(o,m) { if( m == null ) return null; if( m.__id__ == null ) m.__id__ = $fid++; var f; if( o.hx__closures__ == null ) o.hx__closures__ = {}; else f = o.hx__closures__[m.__id__]; if( f == null ) { f = function(){ return f.method.apply(f.scope, arguments); }; f.scope = o; f.method = m; o.hx__closures__[m.__id__] = f; } return f; }

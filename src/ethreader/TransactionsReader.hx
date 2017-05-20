@@ -273,7 +273,7 @@ class TransactionsReader{
 						}
 						
 						var transactionsToOutput = prevTransactions.filter(function(tx){
-							return Std.parseInt(tx.blockNumber) >= startBlock && Std.parseInt(tx.blockNumber) <= endBlock;
+							return tx.blockNumber >= startBlock && tx.blockNumber <= endBlock;
 						});
 						
 
@@ -291,7 +291,7 @@ class TransactionsReader{
 			}else{
 				trace("skip fetch..."); 
 				var transactionsToOutput = transactionsCache.transactions.filter(function(tx){
-						return Std.parseInt(tx.blockNumber) >= startBlock  && Std.parseInt(tx.blockNumber) <= endBlock;
+						return tx.blockNumber >= startBlock  && tx.blockNumber <= endBlock;
 					});
 
 				#if debug

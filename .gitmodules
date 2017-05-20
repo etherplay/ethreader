@@ -1,0 +1,9 @@
+[submodule "externs/parity"]
+	path = externs/parity
+	url = git@github.com:etherplay/parity.hx.git
+[submodule "externs/web3"]
+	path = externs/web3
+	url = git@github.com:etherplay/web3.hx.git
+[submodule "externs/bignumberjs"]
+	path = externs/bignumberjs
+	url = git@github.com:etherplay/bignumber.hx.git
