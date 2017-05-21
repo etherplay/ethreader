@@ -3,16 +3,7 @@ package ethreader;
 import web3.Web3;
 
 typedef DecodedTransaction = { 
-	> Transaction,
-
-	timeStamp : Float,
-	
-	isError : Bool,
-	
-	cumulativeGasUsed : Float,
-	gasUsed : Float,
-	contractAddress : String,
-	logs : Array<Dynamic>,
+	> ExtendedTransaction,
 
 	decoded_call : {
 		name: String,

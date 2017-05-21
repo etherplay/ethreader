@@ -2,8 +2,11 @@
 -main TestAll
 -cp src
 -cp test/src
--cp externs/bignummberjs/src
+-cp externs/bignumberjs/src
 -cp externs/web3/src
 -cp externs/parity/src
 -lib hxnodejs
 -dce full
+-lib jstack
+-D JSTACK_FORCE
+#-debug
