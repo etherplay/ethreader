@@ -32,18 +32,6 @@ Lambda.foreach = function(it,f) {
 Math.__name__ = true;
 var Reflect = function() { };
 Reflect.__name__ = true;
-Reflect.fields = function(o) {
-	var a = [];
-	if(o != null) {
-		var hasOwnProperty = Object.prototype.hasOwnProperty;
-		for( var f in o ) {
-		if(f != "__id__" && f != "hx__closures__" && hasOwnProperty.call(o,f)) {
-			a.push(f);
-		}
-		}
-	}
-	return a;
-};
 Reflect.deleteField = function(o,field) {
 	if(!Object.prototype.hasOwnProperty.call(o,field)) {
 		return false;
@@ -129,7 +117,7 @@ ethreader_EtherscanReader.prototype = {
 				var err1 = null;
 				try {
 					var result = JSON.parse(str);
-					abi = JSON.parse(result.result);
+					abi = result.result;
 				} catch( e ) {
 					abi = null;
 					err1 = "no abi for " + address;
@@ -155,7 +143,6 @@ ethreader_EtherscanReader.prototype = {
 				onData(err,null);
 			});
 			response.on("end",function(chunk1) {
-				var extendedTransactions = null;
 				var transactions = null;
 				var err1 = null;
 				try {
@@ -169,6 +156,7 @@ ethreader_EtherscanReader.prototype = {
 				if(err1 != null) {
 					onData(err1,null);
 				} else {
+					var extendedTransactions = [];
 					var _g = 0;
 					while(_g < transactions.length) {
 						var transaction = transactions[_g];
@@ -197,6 +185,10 @@ var parity_api_Http = require("@parity/parity.js").Api.Transport.Http;
 var parity_Api = require("@parity/parity.js").Api;
 var ethreader_TransactionDecoder = function() { };
 ethreader_TransactionDecoder.__name__ = true;
+ethreader_TransactionDecoder.hasABI = function(address) {
+	var _this = ethreader_TransactionDecoder.abiMapMap;
+	return (__map_reserved[address] != null ? _this.getReserved(address) : _this.h[address]) != null;
+};
 ethreader_TransactionDecoder.addABI = function(address,abiString) {
 	if(abiString != null && abiString != "") {
 		var abi = null;
@@ -246,7 +238,7 @@ ethreader_TransactionDecoder.decodeTransaction = function(transaction) {
 	return decodedTransaction;
 };
 ethreader_TransactionDecoder.decodeTransactionInPlace = function(transaction) {
-	if(transaction.input == "0x" || transaction.input == "" || transaction.input == null) {
+	if(transaction.to == null || transaction.to == "" || transaction.input == "0x" || transaction.input == "" || transaction.input == null) {
 		return;
 	}
 	var callData = ethreader_TransactionDecoder._api.util.decodeCallData(transaction.input);
@@ -301,7 +293,6 @@ ethreader_TransactionDecoder.decodeTransactionInPlace = function(transaction) {
 var js_node_Os = require("os");
 var js_node_Fs = require("fs");
 var ethreader_TransactionsReader = function(address,ethReader) {
-	this._abiMap = null;
 	this._address = address.toLowerCase();
 	this._ethReader = ethReader;
 	this._networkId = null;
@@ -337,42 +328,17 @@ ethreader_TransactionsReader.prototype = {
 			} else if(data == "") {
 				callback("nothing in cache");
 			} else {
-				try {
-					var dynamicAccess = JSON.parse(data);
-					_gthis._abiMap = new haxe_ds_StringMap();
-					var _g = 0;
-					var _g1 = Reflect.fields(dynamicAccess);
-					while(_g < _g1.length) {
-						var key = _g1[_g];
-						++_g;
-						var v = dynamicAccess[key];
-						var _this = _gthis._abiMap;
-						if(__map_reserved[key] != null) {
-							_this.setReserved(key,v);
-						} else {
-							_this.h[key] = v;
-						}
-					}
-					callback(null);
-				} catch( e ) {
-					callback("error parsing data");
-				}
+				ethreader_TransactionDecoder.addABI(_gthis._address,data);
+				callback(null);
 			}
 		});
 	}
-	,_save_abi_to_cache: function(callback) {
-		var dynamicAccess = { };
-		var key = this._abiMap.keys();
-		while(key.hasNext()) {
-			var key1 = key.next();
-			var _this = this._abiMap;
-			dynamicAccess[key1] = __map_reserved[key1] != null ? _this.getReserved(key1) : _this.h[key1];
-		}
-		this.saveToFile(ethreader_TransactionsReader._folder + "/" + this._networkId + "_" + this._address + ".abi",JSON.stringify(dynamicAccess),callback);
+	,_save_abi_to_cache: function(data,callback) {
+		this.saveToFile(ethreader_TransactionsReader._folder + "/" + this._networkId + "_" + this._address + ".abi",data,callback);
 	}
 	,_collect_abi: function(startBlock,endBlock,callback) {
 		var _gthis = this;
-		if(this._abiMap == null) {
+		if(!ethreader_TransactionDecoder.hasABI(this._address)) {
 			this._get_abi_from_cache(function(error) {
 				if(error != null) {
 					_gthis._fetch_abi(function(error1) {
@@ -392,40 +358,12 @@ ethreader_TransactionsReader.prototype = {
 	}
 	,_fetch_abi: function(callback) {
 		var _gthis = this;
-		this._ethReader.getAbi(this._address,function(error,abi) {
+		this._ethReader.getAbi(this._address,function(error,data) {
 			if(error != null) {
 				callback(error);
 			} else {
-				var methodAbiMap = new haxe_ds_StringMap();
-				var _g = 0;
-				while(_g < abi.length) {
-					var methodAbi = abi[_g];
-					++_g;
-					var k = methodAbi.name;
-					if(__map_reserved[k] != null) {
-						methodAbiMap.setReserved(k,methodAbi);
-					} else {
-						methodAbiMap.h[k] = methodAbi;
-					}
-				}
-				var contract = ethreader_TransactionsReader._api.newContract(abi);
-				_gthis._abiMap = new haxe_ds_StringMap();
-				Lambda.foreach(contract.functions,function(fn) {
-					if(fn != null && fn.signature != null) {
-						var this1 = _gthis._abiMap;
-						var k1 = "0x" + fn.signature;
-						var key = fn.name;
-						var v = __map_reserved[key] != null ? methodAbiMap.getReserved(key) : methodAbiMap.h[key];
-						var _this = this1;
-						if(__map_reserved[k1] != null) {
-							_this.setReserved(k1,v);
-						} else {
-							_this.h[k1] = v;
-						}
-					}
-					return true;
-				});
-				_gthis._save_abi_to_cache(function(error1) {
+				ethreader_TransactionDecoder.addABI(_gthis._address,data);
+				_gthis._save_abi_to_cache(data,function(error1) {
 					callback(error1);
 				});
 			}
@@ -539,25 +477,6 @@ haxe_ds_StringMap.prototype = {
 		} else {
 			return this.rh["$" + key];
 		}
-	}
-	,keys: function() {
-		return HxOverrides.iter(this.arrayKeys());
-	}
-	,arrayKeys: function() {
-		var out = [];
-		for( var key in this.h ) {
-		if(this.h.hasOwnProperty(key)) {
-			out.push(key);
-		}
-		}
-		if(this.rh != null) {
-			for( var key in this.rh ) {
-			if(key.charCodeAt(0) == 36) {
-				out.push(key.substr(1));
-			}
-			}
-		}
-		return out;
 	}
 	,__class__: haxe_ds_StringMap
 };
@@ -881,8 +800,6 @@ var Class = { __name__ : ["Class"]};
 var Enum = { };
 ethreader_TransactionDecoder._api = new parity_Api(new parity_api_Http(""));
 ethreader_TransactionDecoder._api.transport._connectTimeout = -1;
-ethreader_TransactionsReader._api = new parity_Api(new parity_api_Http(""));
-ethreader_TransactionsReader._api.transport._connectTimeout = -1;
 ethreader_TransactionsReader._folder = js_node_Os.homedir() + "/.ethreader";
 if(!js_node_Fs.existsSync(ethreader_TransactionsReader._folder)) {
 	js_node_Fs.mkdirSync(ethreader_TransactionsReader._folder);

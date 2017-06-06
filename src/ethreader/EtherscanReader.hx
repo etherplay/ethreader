@@ -69,7 +69,6 @@ class EtherscanReader implements EthReader{
 		  	var abi : String = null;
 		  	var err : Error = null;
 		  	try{
-		  		trace(str);
 		  		var result : Dynamic = haxe.Json.parse(str);
 		  		abi = result.result;
 		  	}catch(e : Dynamic){
