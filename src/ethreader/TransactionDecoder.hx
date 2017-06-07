@@ -123,6 +123,21 @@ class TransactionDecoder{
 					haxe.Json.parse(haxe.Json.stringify(inputArray[j]));
 				}
 
+				//TODO more
+				if(type == "uint8" 
+				|| type == "uint16"
+				|| type == "uint32"
+				|| type == "uint64"
+				|| type == "int8"
+				|| type == "int16"
+				|| type == "int32"
+				|| type == "int64"
+				){
+					value = Std.parseFloat(value);
+				}
+
+				trace(methodAbi.inputs[j].name,type,value);
+
 				decoded_input[methodAbi.inputs[j].name] = value;
 			}
 			
