@@ -2,16 +2,7 @@ package ethreader;
 
 using Lambda;
 
-
-//caching
-import js.node.Fs;
-
-
-typedef TransactionsCache = {
-	transactions : Array<DecodedTransaction>,
-	timestamp : Float,
-	lastBlock : Float
-}
+import ethreader.Cache;
 
 class TransactionsReader{
 	
@@ -19,21 +10,12 @@ class TransactionsReader{
 	var _ethReader : EthReader;
 	var _networkId : String;
 
-	static var _folder : String;
-	static public function __init__(){
-		_folder = untyped js.node.Os.homedir() + "/.ethreader";
-		if (!Fs.existsSync(_folder)){
-		    Fs.mkdirSync(_folder);
-		}
-	}
-
 	public function new(address : String, ethReader : EthReader){
 		_address = address.toLowerCase();
 		_ethReader = ethReader;
 		_networkId = null;
 	}
 
-	
 
 	public function collect(callback : Error -> Array<DecodedTransaction> -> Void, startBlock : Int = 0, endBlock : Int = 2147483647){ //TODO 64bit or string ?
 		if(_networkId == null){
@@ -50,30 +32,12 @@ class TransactionsReader{
 		}
 	}
 
-	function _get_abi_from_cache(callback : Error -> Void){
-
-		getFromFile(_folder + "/" + _networkId  + "_" + _address+".abi",function(error,data){
-			if(error != null){
-				callback(error);
-			}else if(data == ""){
-				callback("nothing in cache");
-			}else{
-				TransactionDecoder.addABI(_address, data);
-				callback(null);
-			}
-		});
-
-		
-	}
-
-	function _save_abi_to_cache(data, callback : Error -> Void){
-		saveToFile(_folder + "/" + _networkId  + "_" + _address+".abi",data, callback);
-	}
+	
 
 	function _collect_abi(startBlock : Int, endBlock : Int, callback : Error -> Array<DecodedTransaction> -> Void){
 		if(!TransactionDecoder.hasABI(_address)){
 			trace("getting abi from cache...");
-			_get_abi_from_cache(function(error){
+			Cache.get_abi_from_cache(_networkId, _address, function(error, abi){
 				if(error != null){
 					trace("getting abi from ethreader...");
 					_fetch_abi(function(error){
@@ -84,6 +48,7 @@ class TransactionsReader{
 						}
 					});
 				}else{
+					TransactionDecoder.addABI(_address, abi);
 					_collect(startBlock,endBlock,callback);
 				}
 			});
@@ -99,37 +64,18 @@ class TransactionsReader{
 			}else{
 				trace("converting abi to abimap");
 				TransactionDecoder.addABI(_address, data);
-				_save_abi_to_cache(data, function(error){
+				Cache.save_abi_to_cache(_networkId, _address, data, function(error){
 					callback(error);
 				});
 			}
 		});		
 	}
 
-	function _get_transactions_from_cache(callback : Error -> TransactionsCache -> Void){
-		getFromFile(_folder + "/" + _ethReader.type + "_" + _networkId  + "_"  + _address+".tx",function(error,data){
-			if(error != null){
-				callback(error,null);
-			}else if(data == ""){
-				callback("nothing in cache",null);
-			}else{
-				callback(null,haxe.Json.parse(data));//todo try catch
-			}
-		});
-	}
-
-	function _save_transactions_to_cache(transactions : Array<DecodedTransaction>, callback : Error -> Void){
-		trace("saving " + transactions.length + " transactions");
-		saveToFile(_folder + "/" + _ethReader.type + "_" + _networkId  + "_"  + _address+".tx",haxe.Json.stringify({
-			transactions : transactions,
-			timestamp : Std.int(haxe.Timer.stamp()),
-			lastBlock : transactions[transactions.length-1].blockNumber //TODO check length
-		}), callback);
-	}
+	
 
 	function _collect(startBlock : Int, endBlock : Int, callback : Error -> Array<DecodedTransaction> -> Void){
 		trace("getting transactions from cache...");
-		_get_transactions_from_cache(function(error, transactionsCache){
+		Cache.get_transactions_from_cache(_networkId, _address, _ethReader.type, function(error, transactionsCache){
 			var cacheDuration = 5 * 60;
 			if(error !=null || (haxe.Timer.stamp() - transactionsCache.timestamp > cacheDuration  && transactionsCache.lastBlock < endBlock)){
 				var prevTransactions = [];
@@ -171,7 +117,7 @@ class TransactionsReader{
 						
 
 						if(extraTransactions){
-							_save_transactions_to_cache(prevTransactions,function(error){
+							Cache.save_transactions_to_cache(_networkId, _address, _ethReader.type, prevTransactions,function(error){
 								callback(null,transactionsToOutput);
 							});
 						}else{
@@ -191,7 +137,7 @@ class TransactionsReader{
 				for(transaction in transactionsCache.transactions){
 					TransactionDecoder.decodeTransactionInPlace(transaction);
 				}
-				_save_transactions_to_cache(transactionsCache.transactions,function(error){
+				Cache.save_transactions_to_cache(_networkId, _address, _ethReader.type, transactionsCache.transactions,function(error){
 					callback(null,transactionsToOutput);
 				});
 				#else
@@ -200,38 +146,6 @@ class TransactionsReader{
 			}
 		});
 		
-	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	function saveToFile(filename : String, data : String, callback : Error -> Void){
-		Fs.writeFile(filename, data, function(err) {
-		    callback(err);
-		}); 
-	}
-
-	function getFromFile(filename : String, callback : Error -> String -> Void){
-		Fs.readFile(filename,  function(err,result){
-			if(err != null){
-				callback(err, null);
-			}else if(result.toString() == ""){
-				callback("nothing", null);
-			}else{
-				callback(err, result.toString());
-			}
-		});
 	}
 
 }

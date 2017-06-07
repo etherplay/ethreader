@@ -83,6 +83,63 @@ bignumberjs__$BigNumber_BigNumber_$Impl_$.fromString = function(value) {
 bignumberjs__$BigNumber_BigNumber_$Impl_$.random = function() {
 	return BigNumber.random();
 };
+var js_node_Os = require("os");
+var ethreader_Util = function() { };
+ethreader_Util.__name__ = true;
+ethreader_Util.ensureFolderExists = function(folder) {
+	if(!js_node_Fs.existsSync(folder)) {
+		js_node_Fs.mkdirSync(folder);
+	}
+};
+ethreader_Util.saveToFile = function(filename,data,callback) {
+	js_node_Fs.writeFile(filename,data,function(err) {
+		callback(err);
+	});
+};
+ethreader_Util.getFromFile = function(filename,callback) {
+	js_node_Fs.readFile(filename,function(err,result) {
+		if(err != null) {
+			callback(err,null);
+		} else if(result.toString() == "") {
+			callback("nothing",null);
+		} else {
+			var tmp = result.toString();
+			callback(err,tmp);
+		}
+	});
+};
+var js_node_Fs = require("fs");
+var ethreader_Cache = function() { };
+ethreader_Cache.__name__ = true;
+ethreader_Cache.get_abi_from_cache = function(networkId,address,callback) {
+	ethreader_Util.getFromFile(ethreader_Cache._folder + "/" + networkId + "_" + address + ".abi",function(error,data) {
+		if(error != null) {
+			callback(error,null);
+		} else if(data == "") {
+			callback("nothing in cache",null);
+		} else {
+			callback(null,data);
+		}
+	});
+};
+ethreader_Cache.save_abi_to_cache = function(networkId,address,data,callback) {
+	ethreader_Util.saveToFile(ethreader_Cache._folder + "/" + networkId + "_" + address + ".abi",data,callback);
+};
+ethreader_Cache.get_transactions_from_cache = function(networkId,address,type,callback) {
+	ethreader_Util.getFromFile(ethreader_Cache._folder + "/" + type + "_" + networkId + "_" + address + ".tx",function(error,data) {
+		if(error != null) {
+			callback(error,null);
+		} else if(data == "") {
+			callback("nothing in cache",null);
+		} else {
+			var tmp = JSON.parse(data);
+			callback(null,tmp);
+		}
+	});
+};
+ethreader_Cache.save_transactions_to_cache = function(networkId,address,type,transactions,callback) {
+	ethreader_Util.saveToFile(ethreader_Cache._folder + "/" + type + "_" + networkId + "_" + address + ".tx",JSON.stringify({ transactions : transactions, timestamp : new Date().getTime() / 1000 | 0, lastBlock : transactions[transactions.length - 1].blockNumber}),callback);
+};
 var ethreader_EthReader = function() { };
 ethreader_EthReader.__name__ = true;
 ethreader_EthReader.prototype = {
@@ -290,8 +347,6 @@ ethreader_TransactionDecoder.decodeTransactionInPlace = function(transaction) {
 		Reflect.deleteField(transaction,"input");
 	}
 };
-var js_node_Os = require("os");
-var js_node_Fs = require("fs");
 var ethreader_TransactionsReader = function(address,ethReader) {
 	this._address = address.toLowerCase();
 	this._ethReader = ethReader;
@@ -320,26 +375,10 @@ ethreader_TransactionsReader.prototype = {
 			this._collect_abi(startBlock,endBlock,callback);
 		}
 	}
-	,_get_abi_from_cache: function(callback) {
-		var _gthis = this;
-		this.getFromFile(ethreader_TransactionsReader._folder + "/" + this._networkId + "_" + this._address + ".abi",function(error,data) {
-			if(error != null) {
-				callback(error);
-			} else if(data == "") {
-				callback("nothing in cache");
-			} else {
-				ethreader_TransactionDecoder.addABI(_gthis._address,data);
-				callback(null);
-			}
-		});
-	}
-	,_save_abi_to_cache: function(data,callback) {
-		this.saveToFile(ethreader_TransactionsReader._folder + "/" + this._networkId + "_" + this._address + ".abi",data,callback);
-	}
 	,_collect_abi: function(startBlock,endBlock,callback) {
 		var _gthis = this;
 		if(!ethreader_TransactionDecoder.hasABI(this._address)) {
-			this._get_abi_from_cache(function(error) {
+			ethreader_Cache.get_abi_from_cache(this._networkId,this._address,function(error,abi) {
 				if(error != null) {
 					_gthis._fetch_abi(function(error1) {
 						if(error1 != null) {
@@ -349,6 +388,7 @@ ethreader_TransactionsReader.prototype = {
 						}
 					});
 				} else {
+					ethreader_TransactionDecoder.addABI(_gthis._address,abi);
 					_gthis._collect(startBlock,endBlock,callback);
 				}
 			});
@@ -363,30 +403,15 @@ ethreader_TransactionsReader.prototype = {
 				callback(error);
 			} else {
 				ethreader_TransactionDecoder.addABI(_gthis._address,data);
-				_gthis._save_abi_to_cache(data,function(error1) {
+				ethreader_Cache.save_abi_to_cache(_gthis._networkId,_gthis._address,data,function(error1) {
 					callback(error1);
 				});
 			}
 		});
 	}
-	,_get_transactions_from_cache: function(callback) {
-		this.getFromFile(ethreader_TransactionsReader._folder + "/" + this._ethReader.type + "_" + this._networkId + "_" + this._address + ".tx",function(error,data) {
-			if(error != null) {
-				callback(error,null);
-			} else if(data == "") {
-				callback("nothing in cache",null);
-			} else {
-				var tmp = JSON.parse(data);
-				callback(null,tmp);
-			}
-		});
-	}
-	,_save_transactions_to_cache: function(transactions,callback) {
-		this.saveToFile(ethreader_TransactionsReader._folder + "/" + this._ethReader.type + "_" + this._networkId + "_" + this._address + ".tx",JSON.stringify({ transactions : transactions, timestamp : new Date().getTime() / 1000 | 0, lastBlock : transactions[transactions.length - 1].blockNumber}),callback);
-	}
 	,_collect: function(startBlock,endBlock,callback) {
 		var _gthis = this;
-		this._get_transactions_from_cache(function(error,transactionsCache) {
+		ethreader_Cache.get_transactions_from_cache(this._networkId,this._address,this._ethReader.type,function(error,transactionsCache) {
 			var cacheDuration = 300;
 			if(error != null || new Date().getTime() / 1000 - transactionsCache.timestamp > cacheDuration && transactionsCache.lastBlock < endBlock) {
 				var prevTransactions = [];
@@ -418,7 +443,7 @@ ethreader_TransactionsReader.prototype = {
 							}
 						});
 						if(extraTransactions) {
-							_gthis._save_transactions_to_cache(prevTransactions,function(error2) {
+							ethreader_Cache.save_transactions_to_cache(_gthis._networkId,_gthis._address,_gthis._ethReader.type,prevTransactions,function(error2) {
 								callback(null,transactionsToOutput);
 							});
 						} else {
@@ -435,23 +460,6 @@ ethreader_TransactionsReader.prototype = {
 					}
 				});
 				callback(null,transactionsToOutput1);
-			}
-		});
-	}
-	,saveToFile: function(filename,data,callback) {
-		js_node_Fs.writeFile(filename,data,function(err) {
-			callback(err);
-		});
-	}
-	,getFromFile: function(filename,callback) {
-		js_node_Fs.readFile(filename,function(err,result) {
-			if(err != null) {
-				callback(err,null);
-			} else if(result.toString() == "") {
-				callback("nothing",null);
-			} else {
-				var tmp = result.toString();
-				callback(err,tmp);
 			}
 		});
 	}
@@ -798,12 +806,10 @@ var Bool = Boolean;
 Bool.__ename__ = ["Bool"];
 var Class = { __name__ : ["Class"]};
 var Enum = { };
+ethreader_Cache._folder = js_node_Os.homedir() + "/.ethreader";
+ethreader_Util.ensureFolderExists(ethreader_Cache._folder);
 ethreader_TransactionDecoder._api = new parity_Api(new parity_api_Http(""));
 ethreader_TransactionDecoder._api.transport._connectTimeout = -1;
-ethreader_TransactionsReader._folder = js_node_Os.homedir() + "/.ethreader";
-if(!js_node_Fs.existsSync(ethreader_TransactionsReader._folder)) {
-	js_node_Fs.mkdirSync(ethreader_TransactionsReader._folder);
-}
 var __map_reserved = {}
 ethreader_TransactionDecoder.abiMapMap = new haxe_ds_StringMap();
 js_Boot.__toStr = ({ }).toString;
