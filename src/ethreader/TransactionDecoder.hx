@@ -107,10 +107,16 @@ class TransactionDecoder{
 				#end
 				
 				var type = methodAbi.inputs[j].type;
+
+				
+				//TODO redo it properly, look in more details at parity resuslt. it seems to be giving BigNumber already
+
+				trace("before : ", methodAbi.inputs[j].name,type,inputArray[j]);
+
 				var value : Dynamic = if(type == "bytes32"){
 					var s = "0x";
 					for(v in cast(inputArray[j],Array<Dynamic>)){
-						s += StringTools.hex(v,2);
+						s += StringTools.hex(v,2).toLowerCase();
 					}					
 					s;
 				}else if(type.indexOf("[]") >= 0){
@@ -121,6 +127,11 @@ class TransactionDecoder{
 					array;
 				}else{
 					haxe.Json.parse(haxe.Json.stringify(inputArray[j]));
+				}
+
+				//TODO fix better
+				if(type == "uint256" || type == "uint168"){
+					value = "0x"+ inputArray[j].toString(16);
 				}
 
 				//TODO more
@@ -136,7 +147,7 @@ class TransactionDecoder{
 					value = Std.parseFloat(value);
 				}
 
-				trace(methodAbi.inputs[j].name,type,value);
+				trace("after : ", methodAbi.inputs[j].name,type,value);
 
 				decoded_input[methodAbi.inputs[j].name] = value;
 			}
