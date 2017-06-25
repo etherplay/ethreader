@@ -88,6 +88,8 @@ class TransactionDecoder{
 			return;
 		}
 
+		// trace("transaction.to",transaction.to);
+
 		var callData = _api.util.decodeCallData(transaction.input);
 		var methodAbi = abiMapMap[transaction.to][callData.signature];
 		if(methodAbi != null){
@@ -154,6 +156,8 @@ class TransactionDecoder{
 			
 			transaction.decoded_call = {"name":methodAbi.name, "input" : decoded_input};
 			Reflect.deleteField(transaction,"input");
+
+			//TODO decode logs
 			
 		}else{
 			trace("no method with signature " + callData.signature);
