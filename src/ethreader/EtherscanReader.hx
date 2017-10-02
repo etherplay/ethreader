@@ -26,9 +26,17 @@ typedef EtherscanTransaction = {
 @:expose
 class EtherscanReader implements EthReader{
 	var _apiKey : String;
+	var _networkName : String;
+	var _apiHost : String;
 
-	public function new(apiKey : String){
+	public function new(apiKey : String, ?networkName : String){
 		_apiKey = apiKey;
+		_networkName = networkName;
+		if(networkName == null){
+			_apiHost = "api.etherscan.io";
+		}else{
+			_apiHost = "ropsten.etherscan.io";
+		}
 	}
 
 	public function newTransactionReader(address : String) : ethreader.TransactionsReader{
@@ -39,13 +47,18 @@ class EtherscanReader implements EthReader{
 	public var type : String = "EtherscanReader";
 
 	public function getNetworkId(callback : Error -> String -> Void):Void{
-		callback(null,"1"); //TODO support testnets
+		if(_networkName != null){
+			callback(null,_networkName); //TODO get proper id ?		
+		}else{
+			callback(null,"1"); 
+		}
+	
 	}
 
 
 	public function getAbi(address : String, onData : Error -> String -> Void):Void{
 		var options = {
-		  host: 'api.etherscan.io',
+		  host: _apiHost,
 		  path: '/api?module=contract&action=getabi&address='+address+'&apikey=' + _apiKey
 		};
 
@@ -90,7 +103,7 @@ class EtherscanReader implements EthReader{
 
 	public function getTransactions(address : String, startBlock : Int, endBlock : Int, onData : Error -> Array<ExtendedTransaction> -> Void):Void{
 		var options = {
-		  host: 'api.etherscan.io', //TODO testnet option
+		  host: _apiHost,
 		  path: '/api?module=account&action=txlist&address='+address+'&startblock=' + startBlock + '&endblock='+endBlock+'&sort=asc&apikey=' + _apiKey
 		};
 
@@ -139,7 +152,7 @@ class EtherscanReader implements EthReader{
 						input : transaction.input,
 
 						blockTimestamp : Std.parseFloat(transaction.timeStamp),
-						isError : transaction.isError == "true", //TODO check 
+						isError : transaction.isError != "0", //TODO check 
 						cumulativeGasUsed : Std.parseFloat(transaction.cumulativeGasUsed),
 						gasUsed : Std.parseFloat(transaction.gasUsed),
 						contractAddress : transaction.contractAddress,
